@@ -26,6 +26,21 @@ with open("users.json", "r") as f:
     users = json.load(f)
 
 # ======================
+# MEMOIRE CHAT
+# ======================
+def load_chat(user):
+    file = f"chats_{user}.json"
+    if not os.path.exists(file):
+        return []
+    with open(file, "r") as f:
+        return json.load(f)
+
+def save_chat(user, messages):
+    file = f"chats_{user}.json"
+    with open(file, "w") as f:
+        json.dump(messages, f)
+
+# ======================
 # SESSION
 # ======================
 if "logged" not in st.session_state:
@@ -38,7 +53,7 @@ if "mode" not in st.session_state:
     st.session_state.mode = None
 
 # ======================
-# STYLE BULLES
+# STYLE
 # ======================
 st.markdown("""
 <style>
@@ -49,30 +64,22 @@ st.markdown("""
     font-family: Arial;
 }
 
-/* TITRE */
 h1 {
     text-align: center;
     font-size: 48px !important;
     color: #c77dff;
 }
 
-/* BOUTONS STYLE BULLE */
+/* BOUTONS BULLES */
 .stButton > button {
     background: linear-gradient(135deg, #7b2cbf, #c77dff);
     color: white;
     border: none;
     border-radius: 50px;
-    padding: 16px 20px;
+    padding: 16px;
     font-size: 20px !important;
     width: 100%;
     margin-top: 10px;
-    box-shadow: 0px 5px 20px rgba(199,125,255,0.3);
-    transition: 0.2s ease;
-}
-
-.stButton > button:hover {
-    transform: scale(1.02);
-    box-shadow: 0px 8px 25px rgba(199,125,255,0.5);
 }
 
 /* INPUT */
@@ -82,11 +89,11 @@ input {
     border-radius: 15px;
 }
 
-/* BULLES CHAT */
+/* CHAT BULLES */
 .user-bubble {
     background: #7b2cbf;
     color: white;
-    padding: 12px 15px;
+    padding: 12px;
     border-radius: 20px;
     margin: 8px 0;
     text-align: right;
@@ -97,7 +104,7 @@ input {
 .ai-bubble {
     background: #222;
     color: white;
-    padding: 12px 15px;
+    padding: 12px;
     border-radius: 20px;
     margin: 8px 0;
     text-align: left;
@@ -147,9 +154,15 @@ if not st.session_state.logged:
         if st.button("Connexion", use_container_width=True):
 
             if username in users and users[username] == password:
+
                 st.session_state.logged = True
                 st.session_state.username = username
+
+                # 🔥 CHARGER MEMOIRE CHAT
+                st.session_state.messages = load_chat(username)
+
                 st.rerun()
+
             else:
                 st.error("Identifiants incorrects")
 
@@ -172,7 +185,7 @@ else:
     # ======================
     if st.session_state.mode == "chat":
 
-        st.subheader("💬 Discussion avec Nova")
+        st.subheader("💬 Nova IA")
 
         user_input = st.text_input("Écris à Nova")
 
@@ -200,6 +213,9 @@ else:
                 "role": "assistant",
                 "content": reply
             })
+
+            # 💾 SAUVEGARDE MEMOIRE
+            save_chat(st.session_state.username, st.session_state.messages)
 
         # ======================
         # AFFICHAGE BULLES
