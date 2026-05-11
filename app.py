@@ -1,17 +1,24 @@
 import streamlit as st
 import json
 import os
+import requests
 from mistralai.client import Mistral
 
 # ======================
 # CONFIG
 # ======================
-st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
+st.set_page_config(page_title="Nova Pro", page_icon="💜", layout="centered")
 
 client = Mistral(api_key=st.secrets["MISTRAL_API_KEY"])
 
+ADMIN = "admin"
+
+# GitHub (OPTIONNEL mais inclus)
+GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
+GITHUB_REPO = st.secrets.get("GITHUB_REPO", "")
+
 # ======================
-# SAVE LOCAL FILE (CHAT + USERS)
+# USERS
 # ======================
 if not os.path.exists("users.json"):
     with open("users.json", "w") as f:
@@ -21,7 +28,7 @@ with open("users.json", "r") as f:
     users = json.load(f)
 
 # ======================
-# SESSION STATE
+# SESSION
 # ======================
 if "logged" not in st.session_state:
     st.session_state.logged = False
@@ -33,109 +40,125 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# STYLE CHAT
+# STYLE
 # ======================
 st.markdown("""
 <style>
-
-.stApp {
-    background-color: #0d0d0d;
-    color: white;
-    font-family: Arial;
-}
-
-.chat {
-    max-width: 800px;
-    margin: auto;
-    padding-bottom: 100px;
-}
+.stApp { background:#0d0d0d; color:white; }
 
 .user {
-    background: #7b2cbf;
-    padding: 12px;
-    border-radius: 15px;
-    margin: 8px 0;
-    text-align: left;
-    max-width: 80%;
+    background:#7b2cbf;
+    padding:10px;
+    border-radius:15px;
+    margin:5px;
+    text-align:left;
+    max-width:80%;
 }
 
 .bot {
-    background: #1f1f1f;
-    padding: 12px;
-    border-radius: 15px;
-    margin: 8px 0;
-    text-align: left;
-    max-width: 80%;
+    background:#1f1f1f;
+    padding:10px;
+    border-radius:15px;
+    margin:5px;
+    text-align:left;
+    max-width:80%;
 }
-
-h1 {
-    text-align: center;
-    color: #c77dff;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💜 Nova")
+st.title("💜 Nova Pro")
 
 # ======================
-# LOGIN / REGISTER
+# GITHUB SAVE
+# ======================
+def save_github(data):
+    if not GITHUB_TOKEN or not GITHUB_REPO:
+        return
+
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/chat_{st.session_state.user}.json"
+
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}"
+    }
+
+    content = json.dumps(data)
+
+    r = requests.get(url, headers=headers)
+    sha = r.json().get("sha") if r.status_code == 200 else None
+
+    payload = {
+        "message": "update chat nova",
+        "content": content.encode("utf-8").decode("utf-8")
+    }
+
+    if sha:
+        payload["sha"] = sha
+
+    requests.put(url, headers=headers, json=payload)
+
+# ======================
+# LOGIN
 # ======================
 if not st.session_state.logged:
 
     mode = st.radio("Choisir", ["Connexion", "Inscription"])
 
-    username = st.text_input("Nom utilisateur")
-    password = st.text_input("Mot de passe", type="password")
+    u = st.text_input("User")
+    p = st.text_input("Pass", type="password")
 
     if mode == "Inscription":
-
         if st.button("Créer compte"):
-
-            if username == "" or password == "":
-                st.error("Remplis tous les champs")
-
-            elif username in users:
-                st.error("Nom déjà utilisé")
-
-            else:
-                users[username] = password
-                with open("users.json", "w") as f:
-                    json.dump(users, f)
-                st.success("Compte créé ✔️")
+            users[u] = p
+            with open("users.json", "w") as f:
+                json.dump(users, f)
+            st.success("OK")
 
     else:
-
-        if st.button("Connexion"):
-
-            if username in users and users[username] == password:
+        if st.button("Login"):
+            if u in users and users[u] == p:
                 st.session_state.logged = True
-                st.session_state.user = username
+                st.session_state.user = u
                 st.rerun()
-            else:
-                st.error("Erreur connexion")
 
 # ======================
-# CHAT IA
+# APP
 # ======================
 else:
 
-    st.success(f"Bienvenue {st.session_state.user}")
+    st.sidebar.write(f"👤 {st.session_state.user}")
 
-    # CHAT DISPLAY
-    st.markdown("<div class='chat'>", unsafe_allow_html=True)
+    # ======================
+    # 👑 ADMIN
+    # ======================
+    if st.session_state.user == ADMIN:
+        st.sidebar.title("👑 ADMIN PANEL")
+        st.sidebar.write(users)
 
+    # ======================
+    # 💾 SAVE GITHUB
+    # ======================
+    if st.sidebar.button("💾 Sauvegarder GitHub"):
+        save_github({
+            "user": st.session_state.user,
+            "messages": st.session_state.messages
+        })
+        st.sidebar.success("Sauvegardé")
+
+    # ======================
+    # 🎤 VOCAL (DICTÉE INFO)
+    # ======================
+    st.sidebar.info("🎤 Vocal : utilise micro clavier (mobile / Chrome)")
+
+    # ======================
+    # CHAT
+    # ======================
     for msg in st.session_state.messages:
-
         if msg["role"] == "user":
             st.markdown(f"<div class='user'>🧑 {msg['content']}</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='bot'>💜 Nova : {msg['content']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='bot'>💜 Nova: {msg['content']}</div>", unsafe_allow_html=True)
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # INPUT
-    prompt = st.text_input("Écris à Nova")
+    prompt = st.text_input("Message")
 
     if st.button("Envoyer") and prompt:
 
@@ -145,7 +168,7 @@ else:
             response = client.chat.complete(
                 model="mistral-small-latest",
                 messages=[
-                    {"role": "system", "content": "Tu es Nova, une IA féminine douce et utile."},
+                    {"role": "system", "content": "Tu es Nova, une IA féminine douce."},
                     *st.session_state.messages
                 ]
             )
@@ -153,7 +176,7 @@ else:
             reply = response.choices[0].message.content
 
         except Exception as e:
-            reply = f"⚠️ Erreur IA: {e}"
+            reply = f"Erreur IA: {e}"
 
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
