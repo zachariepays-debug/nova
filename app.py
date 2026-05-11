@@ -1,14 +1,14 @@
 import streamlit as st
 import json
 import os
-from mistralai.client import Mistral
+from mistralai import Mistral
 
 # ======================
 # CONFIG
 # ======================
 st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
 
-# ⚠️ TA CLE API ICI
+# 🔑 TA CLE API ICI
 client = Mistral(api_key="TA_CLE_API_ICI")
 
 # ======================
@@ -38,7 +38,6 @@ st.markdown("""
 .stApp {
     background-color: #0d0d0d;
     color: white;
-    font-family: Arial;
 }
 
 h1 {
@@ -75,6 +74,7 @@ if not st.session_state.logged:
     username = st.text_input("Nom utilisateur")
     password = st.text_input("Mot de passe", type="password")
 
+    # INSCRIPTION
     if mode == "Inscription":
 
         if st.button("Créer compte"):
@@ -92,6 +92,7 @@ if not st.session_state.logged:
 
                 st.success("Compte créé ✔️")
 
+    # CONNEXION
     else:
 
         if st.button("Connexion"):
@@ -110,7 +111,7 @@ else:
 
     st.success(f"Bienvenue {st.session_state.username}")
 
-    # CHAT AFFICHAGE
+    # AFFICHAGE CHAT
     for msg in st.session_state.messages:
         if msg["role"] == "user":
             st.markdown(f"<div class='user'>🧑 {msg['content']}</div>", unsafe_allow_html=True)
@@ -121,17 +122,11 @@ else:
 
     if st.button("Envoyer") and prompt:
 
-        st.session_state.messages.append({
-            "role": "user",
-            "content": prompt
-        })
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # ======================
-        # IA SAFE (ANTI CRASH)
-        # ======================
         try:
             response = client.chat.complete(
-                model="mistral-tiny",  # 🔥 modèle le plus stable
+                model="mistral-small-latest",
                 messages=[
                     {
                         "role": "system",
@@ -144,16 +139,12 @@ else:
             reply = response.choices[0].message.content
 
         except Exception as e:
-            reply = "⚠️ IA indisponible (clé API, quota ou modèle)"
+            reply = f"⚠️ Erreur IA : {e}"
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": reply
-        })
+        st.session_state.messages.append({"role": "assistant", "content": reply})
 
         st.rerun()
 
-    # LOGOUT
     if st.button("Déconnexion"):
         st.session_state.logged = False
         st.session_state.messages = []
