@@ -3,34 +3,60 @@ import json
 import requests
 import base64
 from mistralai.client import Mistral
+from datetime import datetime
 
 # ======================
 # CONFIG
 # ======================
-st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
+st.set_page_config(page_title="Nova DB", page_icon="💜")
 
 client = Mistral(api_key=st.secrets["MISTRAL_API_KEY"])
 
-ADMIN_PASSWORD = "babar"
-
-GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
-GITHUB_REPO = st.secrets.get("GITHUB_REPO", "")
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+GITHUB_REPO = st.secrets["GITHUB_REPO"]
 
 # ======================
-# USERS
+# HELPERS GITHUB
 # ======================
-if "users" not in st.session_state:
-    if "users.json" in st.secrets:
-        st.session_state.users = json.loads(st.secrets["users.json"])
-    else:
-        st.session_state.users = {}
+def github_save(path, data):
 
-# fallback simple local
-try:
-    with open("users.json", "r") as f:
-        users = json.load(f)
-except:
-    users = {}
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
+
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json"
+    }
+
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    encoded = base64.b64encode(content.encode()).decode()
+
+    r = requests.get(url, headers=headers)
+    sha = r.json().get("sha") if r.status_code == 200 else None
+
+    payload = {
+        "message": f"update {path}",
+        "content": encoded
+    }
+
+    if sha:
+        payload["sha"] = sha
+
+    requests.put(url, headers=headers, json=payload)
+
+def github_load(path):
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
+
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}"
+    }
+
+    r = requests.get(url, headers=headers)
+
+    if r.status_code != 200:
+        return None
+
+    content = r.json()["content"]
+    return json.loads(base64.b64decode(content).decode())
 
 # ======================
 # SESSION
@@ -45,164 +71,144 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# SAVE TO GITHUB (AUTO)
-# ======================
-def save_github():
-
-    if not GITHUB_TOKEN or not GITHUB_REPO:
-        return
-
-    path = f"chats/{st.session_state.user}.json"
-    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
-
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json"
-    }
-
-    content = json.dumps(st.session_state.messages, ensure_ascii=False, indent=2)
-    encoded = base64.b64encode(content.encode()).decode()
-
-    r = requests.get(url, headers=headers)
-    sha = r.json().get("sha") if r.status_code == 200 else None
-
-    payload = {
-        "message": f"auto save {st.session_state.user}",
-        "content": encoded
-    }
-
-    if sha:
-        payload["sha"] = sha
-
-    requests.put(url, headers=headers, json=payload)
-
-# ======================
 # STYLE
 # ======================
 st.markdown("""
 <style>
-.stApp {
-    background-color: #0d0d0d;
-    color: white;
-    font-family: Arial;
-}
+.stApp { background:#0d0d0d; color:white; }
 
 .user {
-    background: #7b2cbf;
-    padding: 10px;
-    border-radius: 15px;
-    margin: 5px;
-    text-align: left;
-    max-width: 80%;
+    background:#7b2cbf;
+    padding:10px;
+    border-radius:15px;
+    margin:5px;
+    max-width:80%;
 }
 
 .bot {
-    background: #1f1f1f;
-    padding: 10px;
-    border-radius: 15px;
-    margin: 5px;
-    text-align: left;
-    max-width: 80%;
-}
-
-h1 {
-    text-align: center;
-    color: #c77dff;
+    background:#1f1f1f;
+    padding:10px;
+    border-radius:15px;
+    margin:5px;
+    max-width:80%;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💜 Nova")
+st.title("💜 Nova DB")
 
 # ======================
 # LOGIN / REGISTER
 # ======================
 if not st.session_state.logged:
 
-    tab1, tab2, tab3 = st.tabs(["Connexion", "Inscription", "Admin"])
+    tab1, tab2, tab3 = st.tabs(["Login", "Register", "Admin"])
 
+    # LOGIN
     with tab1:
         u = st.text_input("User")
-        p = st.text_input("Password", type="password")
+        p = st.text_input("Pass", type="password")
 
         if st.button("Login"):
-            if u in users and users[u] == p:
+            user_data = github_load(f"users/{u}.json")
+
+            if user_data and user_data["password"] == p:
                 st.session_state.logged = True
                 st.session_state.user = u
-                st.rerun()
 
+                chat = github_load(f"chats/{u}.json")
+                if chat:
+                    st.session_state.messages = chat["messages"]
+
+                st.rerun()
+            else:
+                st.error("Wrong login")
+
+    # REGISTER
     with tab2:
         u2 = st.text_input("New user")
         p2 = st.text_input("New pass", type="password")
 
-        if st.button("Register"):
-            users[u2] = p2
-            with open("users.json", "w") as f:
-                json.dump(users, f)
-            st.success("Compte créé")
+        if st.button("Create"):
 
+            github_save(f"users/{u2}.json", {
+                "user": u2,
+                "password": p2,
+                "created": str(datetime.now())
+            })
+
+            github_save(f"chats/{u2}.json", {
+                "messages": []
+            })
+
+            st.success("Account created")
+
+    # ADMIN
     with tab3:
         admin_pass = st.text_input("Admin password", type="password")
 
         if st.button("Enter admin"):
-            if admin_pass == ADMIN_PASSWORD:
+
+            if admin_pass == "babar":
                 st.session_state.logged = True
                 st.session_state.user = "admin"
                 st.rerun()
             else:
-                st.error("Wrong password")
+                st.error("Wrong")
 
 # ======================
 # APP
 # ======================
 else:
 
-    st.success(f"Connecté : {st.session_state.user}")
+    st.success(f"User: {st.session_state.user}")
 
-    # ADMIN PANEL
+    # ======================
+    # 👑 ADMIN PANEL
+    # ======================
     if st.session_state.user == "admin":
-        st.warning("👑 ADMIN MODE")
-        st.write(users)
 
+        st.warning("ADMIN MODE")
+
+        users_list = github_load("users")
+        st.write(users_list)
+
+    # ======================
     # CHAT DISPLAY
+    # ======================
     for m in st.session_state.messages:
         if m["role"] == "user":
             st.markdown(f"<div class='user'>🧑 {m['content']}</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='bot'>💜 Nova: {m['content']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='bot'>💜 {m['content']}</div>", unsafe_allow_html=True)
 
     prompt = st.text_input("Message")
 
-    if st.button("Envoyer") and prompt:
+    if st.button("Send") and prompt:
 
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        try:
-            response = client.chat.complete(
-                model="mistral-small-latest",
-                messages=[
-                    {"role": "system", "content": "Tu es Nova, IA féminine douce et utile."},
-                    *st.session_state.messages
-                ]
-            )
+        response = client.chat.complete(
+            model="mistral-small-latest",
+            messages=[
+                {"role": "system", "content": "Tu es Nova, IA féminine douce."},
+                *st.session_state.messages
+            ]
+        )
 
-            reply = response.choices[0].message.content
-
-        except Exception as e:
-            reply = f"Erreur IA: {e}"
+        reply = response.choices[0].message.content
 
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
-        # 🔥 AUTO SAVE GITHUB
-        try:
-            save_github()
-        except:
-            pass
+        # 🔥 SAVE CHAT (DERNIER EN PREMIER = OVERRIDE)
+        github_save(f"chats/{st.session_state.user}.json", {
+            "messages": st.session_state.messages[::-1]  # dernier en premier
+        })
 
         st.rerun()
 
     # LOGOUT
-    if st.button("Déconnexion"):
+    if st.button("Logout"):
         st.session_state.logged = False
         st.session_state.messages = []
         st.rerun()
