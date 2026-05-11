@@ -1,17 +1,23 @@
 import streamlit as st
 import json
 import os
+from mistralai import Mistral
 
+# ======================
+# CONFIG
+# ======================
 st.set_page_config(
     page_title="Nova",
     page_icon="💜",
     layout="centered"
 )
 
-# ======================
-# USERS
-# ======================
+# ⚠️ MET TA CLE ICI
+client = Mistral(api_key="TA_CLE_API_ICI")
 
+# ======================
+# USERS SYSTEM
+# ======================
 if not os.path.exists("users.json"):
     with open("users.json", "w") as f:
         json.dump({}, f)
@@ -22,21 +28,20 @@ with open("users.json", "r") as f:
 # ======================
 # SESSION
 # ======================
-
 if "logged" not in st.session_state:
     st.session_state.logged = False
 
-# ======================
-# STYLE
-# ======================
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
+if "mode" not in st.session_state:
+    st.session_state.mode = None
+
+# ======================
+# STYLE MOBILE
+# ======================
 st.markdown("""
 <style>
-
-html, body, [class*="css"] {
-    font-family: sans-serif;
-}
-
 .stApp {
     background-color: #0d0d0d;
     color: white;
@@ -44,75 +49,44 @@ html, body, [class*="css"] {
 
 h1 {
     text-align: center;
-    font-size: 55px !important;
+    font-size: 50px !important;
     color: #c77dff;
 }
 
-.big-button button {
-    height: 180px;
-    font-size: 35px !important;
-    border-radius: 30px;
-    margin-top: 20px;
+.stButton button {
+    height: 140px;
+    font-size: 28px !important;
+    border-radius: 25px;
     background: linear-gradient(45deg,#7b2cbf,#c77dff);
     color: white;
     border: none;
 }
 
-.stTextInput input {
-    height: 55px;
-    font-size: 20px;
-    border-radius: 15px;
+input {
+    height: 50px !important;
+    font-size: 18px !important;
 }
-
-.stSelectbox div {
-    font-size: 20px;
-}
-
-.small-text {
-    text-align:center;
-    color:gray;
-    font-size:18px;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
 # ======================
-# LOGO
+# TITLE
 # ======================
-
-st.markdown("# 💜 NOVA")
+st.title("💜 NOVA")
 
 # ======================
 # LOGIN / REGISTER
 # ======================
-
 if not st.session_state.logged:
 
-    st.markdown(
-        "<p class='small-text'>Assistant IA vocal intelligent</p>",
-        unsafe_allow_html=True
-    )
-
-    menu = st.selectbox(
-        "Choisir",
-        ["Connexion", "Inscription"]
-    )
+    menu = st.selectbox("Choisir", ["Connexion", "Inscription"])
 
     username = st.text_input("Nom utilisateur")
-
-    password = st.text_input(
-        "Mot de passe",
-        type="password"
-    )
-
-    # ======================
-    # REGISTER
-    # ======================
+    password = st.text_input("Mot de passe", type="password")
 
     if menu == "Inscription":
 
-        if st.button("Créer mon compte", use_container_width=True):
+        if st.button("Créer compte", use_container_width=True):
 
             if username in users:
                 st.error("Nom déjà utilisé")
@@ -121,79 +95,84 @@ if not st.session_state.logged:
                 st.error("Remplis tous les champs")
 
             else:
-
                 users[username] = password
-
                 with open("users.json", "w") as f:
                     json.dump(users, f)
 
-                st.success("Compte créé avec succès")
-
-    # ======================
-    # LOGIN
-    # ======================
+                st.success("Compte créé")
 
     else:
 
         if st.button("Connexion", use_container_width=True):
 
             if username in users and users[username] == password:
-
                 st.session_state.logged = True
                 st.session_state.username = username
                 st.rerun()
-
             else:
                 st.error("Identifiants incorrects")
 
 # ======================
 # HOME
 # ======================
-
 else:
 
-    st.success(
-        f"Bienvenue {st.session_state.username}"
-    )
+    st.success(f"Bienvenue {st.session_state.username}")
 
-    st.markdown("## Choisissez un mode")
+    # MODE CHAT
+    if st.button("💬 IA TEXTE", use_container_width=True):
+        st.session_state.mode = "chat"
 
-    st.markdown(
-        '<div class="big-button">',
-        unsafe_allow_html=True
-    )
+    # MODE VOCAL (future)
+    if st.button("🎤 IA VOCALE", use_container_width=True):
+        st.info("Bientôt disponible 🔥")
 
-    st.button(
-        "💬 IA TEXTE",
-        use_container_width=True
-    )
+    # ======================
+    # CHAT IA
+    # ======================
+    if st.session_state.mode == "chat":
 
-    st.markdown(
-        '</div>',
-        unsafe_allow_html=True
-    )
+        st.subheader("💬 Discussion avec Nova")
 
-    st.markdown(
-        '<div class="big-button">',
-        unsafe_allow_html=True
-    )
+        user_input = st.text_input("Parle à Nova")
 
-    st.button(
-        "🎤 IA VOCALE",
-        use_container_width=True
-    )
+        if st.button("Envoyer") and user_input:
 
-    st.markdown(
-        '</div>',
-        unsafe_allow_html=True
-    )
+            st.session_state.messages.append({
+                "role": "user",
+                "content": user_input
+            })
 
-    st.divider()
+            response = client.chat.complete(
+                model="mistral-large-latest",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Tu es Nova, une IA féminine douce, utile et naturelle."
+                    },
+                    *st.session_state.messages
+                ]
+            )
 
-    if st.button(
-        "Déconnexion",
-        use_container_width=True
-    ):
+            reply = response.choices[0].message.content
 
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": reply
+            })
+
+        # AFFICHAGE HISTORIQUE
+        for msg in st.session_state.messages:
+            if msg["role"] == "user":
+                st.markdown(f"🧑‍💬 **Toi :** {msg['content']}")
+            else:
+                st.markdown(f"💜 **Nova :** {msg['content']}")
+
+    # ======================
+    # LOGOUT
+    # ======================
+    if st.button("Déconnexion"):
         st.session_state.logged = False
+        st.session_state.messages = []
+        st.session_state.mode = None
         st.rerun()
