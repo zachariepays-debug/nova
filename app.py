@@ -35,38 +35,32 @@ if "messages" not in st.session_state:
 st.markdown("""
 <style>
 
-/* fond */
 .stApp {
     background-color: #0d0d0d;
     color: white;
 }
 
-/* zone chat */
-.chat-container {
+.chat {
     max-width: 800px;
     margin: auto;
     padding-bottom: 120px;
 }
 
-/* bulles user */
 .user {
     background: #7b2cbf;
-    padding: 12px 16px;
+    padding: 12px;
     border-radius: 18px;
-    margin: 10px 0;
+    margin: 8px 0;
     text-align: right;
 }
 
-/* bulles IA */
 .bot {
     background: #1f1f1f;
-    padding: 12px 16px;
+    padding: 12px;
     border-radius: 18px;
-    margin: 10px 0;
-    text-align: left;
+    margin: 8px 0;
 }
 
-/* input en bas */
 input {
     position: fixed;
     bottom: 20px;
@@ -76,15 +70,6 @@ input {
     height: 50px;
     border-radius: 25px;
     padding: 10px;
-    border: none;
-    font-size: 16px;
-}
-
-/* bouton envoyer */
-.stButton {
-    position: fixed;
-    bottom: 20px;
-    right: 18%;
 }
 
 </style>
@@ -93,31 +78,54 @@ input {
 st.title("💜 Nova Chat")
 
 # ======================
-# LOGIN SIMPLE
+# LOGIN / INSCRIPTION
 # ======================
 if not st.session_state.logged:
 
-    u = st.text_input("Nom")
-    p = st.text_input("Mot de passe", type="password")
+    mode = st.radio("Choisir", ["Connexion", "Inscription"])
 
-    if st.button("Connexion"):
+    username = st.text_input("Nom utilisateur")
+    password = st.text_input("Mot de passe", type="password")
 
-        if u in users and users[u] == p:
-            st.session_state.logged = True
-            st.session_state.user = u
-            st.rerun()
-        else:
-            st.error("Erreur")
+    # INSCRIPTION
+    if mode == "Inscription":
+
+        if st.button("Créer compte"):
+
+            if username in users:
+                st.error("Nom déjà utilisé")
+
+            elif username == "" or password == "":
+                st.error("Remplis tous les champs")
+
+            else:
+                users[username] = password
+
+                with open("users.json", "w") as f:
+                    json.dump(users, f)
+
+                st.success("Compte créé ✔️")
+
+    # CONNEXION
+    else:
+
+        if st.button("Connexion"):
+
+            if username in users and users[username] == password:
+                st.session_state.logged = True
+                st.session_state.username = username
+                st.rerun()
+            else:
+                st.error("Erreur connexion")
 
 # ======================
-# CHAT STYLE GPT
+# CHAT
 # ======================
 else:
 
-    st.markdown("## 💬 Discussion avec Nova")
+    st.success(f"Bienvenue {st.session_state.username}")
 
-    # DISPLAY CHAT
-    st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+    st.markdown("<div class='chat'>", unsafe_allow_html=True)
 
     for msg in st.session_state.messages:
         if msg["role"] == "user":
@@ -127,7 +135,6 @@ else:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # INPUT
     prompt = st.text_input("Message", label_visibility="collapsed")
 
     if st.button("Envoyer") and prompt:
@@ -138,7 +145,7 @@ else:
             response = client.chat.complete(
                 model="mistral-small-latest",
                 messages=[
-                    {"role": "system", "content": "Tu es Nova, une IA féminine douce."},
+                    {"role": "system", "content": "Tu es Nova, une IA féminine douce et utile."},
                     *st.session_state.messages
                 ]
             )
