@@ -8,6 +8,7 @@ from mistralai.client import Mistral
 # ======================
 st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
 
+# ⚠️ TA CLE API ICI
 client = Mistral(api_key="TA_CLE_API_ICI")
 
 # ======================
@@ -30,13 +31,14 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# STYLE SIMPLE (SAFE)
+# STYLE SIMPLE
 # ======================
 st.markdown("""
 <style>
 .stApp {
     background-color: #0d0d0d;
     color: white;
+    font-family: Arial;
 }
 
 h1 {
@@ -64,7 +66,7 @@ h1 {
 st.title("💜 Nova")
 
 # ======================
-# LOGIN
+# LOGIN / INSCRIPTION
 # ======================
 if not st.session_state.logged:
 
@@ -77,7 +79,10 @@ if not st.session_state.logged:
 
         if st.button("Créer compte"):
 
-            if username in users:
+            if username == "" or password == "":
+                st.error("Remplis tous les champs")
+
+            elif username in users:
                 st.error("Nom déjà utilisé")
 
             else:
@@ -99,44 +104,56 @@ if not st.session_state.logged:
                 st.error("Erreur connexion")
 
 # ======================
-# CHAT
+# CHAT IA
 # ======================
 else:
 
     st.success(f"Bienvenue {st.session_state.username}")
 
-    # AFFICHAGE CHAT
+    # CHAT AFFICHAGE
     for msg in st.session_state.messages:
         if msg["role"] == "user":
             st.markdown(f"<div class='user'>🧑 {msg['content']}</div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<div class='bot'>💜 Nova : {msg['content']}</div>", unsafe_allow_html=True)
 
-    # INPUT NORMAL STREAMLIT (IMPORTANT)
     prompt = st.text_input("Écris à Nova")
 
     if st.button("Envoyer") and prompt:
 
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages.append({
+            "role": "user",
+            "content": prompt
+        })
 
+        # ======================
+        # IA SAFE (ANTI CRASH)
+        # ======================
         try:
             response = client.chat.complete(
-                model="mistral-small-latest",
+                model="mistral-tiny",  # 🔥 modèle le plus stable
                 messages=[
-                    {"role": "system", "content": "Tu es Nova, une IA féminine douce."},
+                    {
+                        "role": "system",
+                        "content": "Tu es Nova, une IA féminine douce et utile."
+                    },
                     *st.session_state.messages
                 ]
             )
 
             reply = response.choices[0].message.content
 
-        except:
-            reply = "Erreur IA"
+        except Exception as e:
+            reply = "⚠️ IA indisponible (clé API, quota ou modèle)"
 
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": reply
+        })
 
         st.rerun()
 
+    # LOGOUT
     if st.button("Déconnexion"):
         st.session_state.logged = False
         st.session_state.messages = []
