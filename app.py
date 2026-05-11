@@ -34,19 +34,13 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# STYLE
+# STYLE SIMPLE
 # ======================
 st.markdown("""
 <style>
 .stApp {
     background-color: #0d0d0d;
     color: white;
-    font-family: Arial;
-}
-
-h1 {
-    text-align: center;
-    color: #c77dff;
 }
 
 .user {
@@ -54,7 +48,7 @@ h1 {
     padding: 10px;
     border-radius: 15px;
     margin: 5px 0;
-    text-align: right;
+    text-align: left;
 }
 
 .bot {
@@ -62,6 +56,7 @@ h1 {
     padding: 10px;
     border-radius: 15px;
     margin: 5px 0;
+    text-align: left;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -82,17 +77,12 @@ if not st.session_state.logged:
 
         if st.button("Créer compte"):
 
-            if username == "" or password == "":
-                st.error("Remplis tous les champs")
-
-            elif username in users:
+            if username in users:
                 st.error("Nom déjà utilisé")
-
             else:
                 users[username] = password
                 with open("users.json", "w") as f:
                     json.dump(users, f)
-
                 st.success("Compte créé ✔️")
 
     else:
@@ -118,7 +108,7 @@ else:
         if msg["role"] == "user":
             st.markdown(f"<div class='user'>🧑 {msg['content']}</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='bot'>💜 Nova : {msg['content']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='bot'>💜 Nova: {msg['content']}</div>", unsafe_allow_html=True)
 
     prompt = st.text_input("Écris à Nova")
 
@@ -138,7 +128,7 @@ else:
             reply = response.choices[0].message.content
 
         except Exception as e:
-            reply = f"⚠️ Erreur IA : {e}"
+            reply = f"⚠️ Erreur IA: {e}"
 
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
