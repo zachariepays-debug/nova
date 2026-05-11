@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import os
-from mistralai import Mistral
+from mistralai.client import Mistral
 
 # ======================
 # CONFIG
@@ -16,7 +16,7 @@ st.set_page_config(
 client = Mistral(api_key="TA_CLE_API_ICI")
 
 # ======================
-# USERS
+# USERS SYSTEM
 # ======================
 if not os.path.exists("users.json"):
     with open("users.json", "w") as f:
@@ -35,7 +35,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# STYLE
+# STYLE SIMPLE
 # ======================
 st.markdown("""
 <style>
@@ -54,7 +54,7 @@ h1 {
 st.title("💜 NOVA")
 
 # ======================
-# LOGIN
+# LOGIN / REGISTER
 # ======================
 if not st.session_state.logged:
 
@@ -69,6 +69,9 @@ if not st.session_state.logged:
 
             if username in users:
                 st.error("Nom déjà utilisé")
+
+            elif username == "" or password == "":
+                st.error("Remplis tous les champs")
 
             else:
                 users[username] = password
@@ -90,7 +93,7 @@ if not st.session_state.logged:
                 st.error("Erreur connexion")
 
 # ======================
-# APP
+# APP PRINCIPALE
 # ======================
 else:
 
@@ -108,7 +111,10 @@ else:
         response = client.chat.complete(
             model="mistral-large-latest",
             messages=[
-                {"role": "system", "content": "Tu es Nova, une IA féminine douce et utile."},
+                {
+                    "role": "system",
+                    "content": "Tu es Nova, une IA féminine douce, naturelle et utile."
+                },
                 *st.session_state.messages
             ]
         )
