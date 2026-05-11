@@ -1,24 +1,17 @@
 import streamlit as st
 import json
 import os
-import requests
 from mistralai.client import Mistral
 
 # ======================
 # CONFIG
 # ======================
-st.set_page_config(page_title="Nova PRO MAX", page_icon="💜", layout="centered")
+st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
 
 client = Mistral(api_key=st.secrets["MISTRAL_API_KEY"])
 
-GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
-GITHUB_REPO = st.secrets["GITHUB_REPO"]  # ex: "user/nova-db"
-GITHUB_FILE = "data.json"
-
-ADMIN = "admin"
-
 # ======================
-# LOAD USERS
+# SAVE LOCAL FILE (CHAT + USERS)
 # ======================
 if not os.path.exists("users.json"):
     with open("users.json", "w") as f:
@@ -28,7 +21,7 @@ with open("users.json", "r") as f:
     users = json.load(f)
 
 # ======================
-# SESSION
+# SESSION STATE
 # ======================
 if "logged" not in st.session_state:
     st.session_state.logged = False
@@ -40,125 +33,111 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# GITHUB SAVE FUNCTION
-# ======================
-def save_to_github(data):
-    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_FILE}"
-
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json"
-    }
-
-    # get old file sha
-    r = requests.get(url, headers=headers)
-    sha = r.json().get("sha") if r.status_code == 200 else None
-
-    payload = {
-        "message": "update nova data",
-        "content": json.dumps(data).encode("utf-8").decode("utf-8").encode("base64").decode("utf-8") if False else json.dumps(data),
-    }
-
-    if sha:
-        payload["sha"] = sha
-
-    requests.put(url, headers=headers, json=payload)
-
-# ======================
-# STYLE
+# STYLE CHAT
 # ======================
 st.markdown("""
 <style>
-.stApp { background:#0d0d0d; color:white; }
+
+.stApp {
+    background-color: #0d0d0d;
+    color: white;
+    font-family: Arial;
+}
+
+.chat {
+    max-width: 800px;
+    margin: auto;
+    padding-bottom: 100px;
+}
 
 .user {
-    background:#7b2cbf;
-    padding:10px;
-    border-radius:15px;
-    margin:5px;
-    text-align:left;
-    max-width:80%;
+    background: #7b2cbf;
+    padding: 12px;
+    border-radius: 15px;
+    margin: 8px 0;
+    text-align: left;
+    max-width: 80%;
 }
 
 .bot {
-    background:#1f1f1f;
-    padding:10px;
-    border-radius:15px;
-    margin:5px;
-    text-align:left;
-    max-width:80%;
+    background: #1f1f1f;
+    padding: 12px;
+    border-radius: 15px;
+    margin: 8px 0;
+    text-align: left;
+    max-width: 80%;
 }
+
+h1 {
+    text-align: center;
+    color: #c77dff;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💜 Nova PRO MAX")
+st.title("💜 Nova")
 
 # ======================
-# LOGIN
+# LOGIN / REGISTER
 # ======================
 if not st.session_state.logged:
 
-    tab1, tab2 = st.tabs(["Connexion", "Inscription"])
+    mode = st.radio("Choisir", ["Connexion", "Inscription"])
 
-    with tab1:
-        u = st.text_input("User")
-        p = st.text_input("Pass", type="password")
+    username = st.text_input("Nom utilisateur")
+    password = st.text_input("Mot de passe", type="password")
 
-        if st.button("Login"):
-            if u in users and users[u] == p:
+    if mode == "Inscription":
+
+        if st.button("Créer compte"):
+
+            if username == "" or password == "":
+                st.error("Remplis tous les champs")
+
+            elif username in users:
+                st.error("Nom déjà utilisé")
+
+            else:
+                users[username] = password
+                with open("users.json", "w") as f:
+                    json.dump(users, f)
+                st.success("Compte créé ✔️")
+
+    else:
+
+        if st.button("Connexion"):
+
+            if username in users and users[username] == password:
                 st.session_state.logged = True
-                st.session_state.user = u
+                st.session_state.user = username
                 st.rerun()
-
-    with tab2:
-        u2 = st.text_input("New user")
-        p2 = st.text_input("New pass", type="password")
-
-        if st.button("Register"):
-            users[u2] = p2
-            with open("users.json", "w") as f:
-                json.dump(users, f)
-            st.success("OK")
+            else:
+                st.error("Erreur connexion")
 
 # ======================
-# APP
+# CHAT IA
 # ======================
 else:
 
-    st.sidebar.write(f"👤 {st.session_state.user}")
+    st.success(f"Bienvenue {st.session_state.user}")
 
-    # ADMIN PANEL
-    if st.session_state.user == ADMIN:
-        st.sidebar.title("👑 ADMIN")
-        st.sidebar.write(users)
+    # CHAT DISPLAY
+    st.markdown("<div class='chat'>", unsafe_allow_html=True)
 
-    # EXPORT CHAT
-    if st.sidebar.button("💾 Save GitHub"):
-        save_to_github({
-            "user": st.session_state.user,
-            "messages": st.session_state.messages
-        })
-        st.sidebar.success("Saved!")
-
-    # LOGOUT
-    if st.sidebar.button("Logout"):
-        st.session_state.logged = False
-        st.session_state.messages = []
-        st.rerun()
-
-    # CHAT
     for msg in st.session_state.messages:
+
         if msg["role"] == "user":
             st.markdown(f"<div class='user'>🧑 {msg['content']}</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='bot'>💜 Nova: {msg['content']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='bot'>💜 Nova : {msg['content']}</div>", unsafe_allow_html=True)
 
-    # VOICE (DICTÉE)
-    st.info("🎤 Vocal : utilise micro clavier (Chrome / mobile)")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    prompt = st.text_input("Message")
+    # INPUT
+    prompt = st.text_input("Écris à Nova")
 
-    if st.button("Send") and prompt:
+    if st.button("Envoyer") and prompt:
 
         st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -166,7 +145,7 @@ else:
             response = client.chat.complete(
                 model="mistral-small-latest",
                 messages=[
-                    {"role": "system", "content": "Tu es Nova, IA féminine douce."},
+                    {"role": "system", "content": "Tu es Nova, une IA féminine douce et utile."},
                     *st.session_state.messages
                 ]
             )
@@ -174,8 +153,14 @@ else:
             reply = response.choices[0].message.content
 
         except Exception as e:
-            reply = f"Erreur: {e}"
+            reply = f"⚠️ Erreur IA: {e}"
 
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
+        st.rerun()
+
+    # LOGOUT
+    if st.button("Déconnexion"):
+        st.session_state.logged = False
+        st.session_state.messages = []
         st.rerun()
