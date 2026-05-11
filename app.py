@@ -12,7 +12,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# ⚠️ MET TA CLE ICI
+# ⚠️ MET TA CLE MISTRAL ICI
 client = Mistral(api_key="TA_CLE_API_ICI")
 
 # ======================
@@ -26,7 +26,7 @@ with open("users.json", "r") as f:
     users = json.load(f)
 
 # ======================
-# SESSION
+# SESSION STATE
 # ======================
 if "logged" not in st.session_state:
     st.session_state.logged = False
@@ -84,6 +84,7 @@ if not st.session_state.logged:
     username = st.text_input("Nom utilisateur")
     password = st.text_input("Mot de passe", type="password")
 
+    # INSCRIPTION
     if menu == "Inscription":
 
         if st.button("Créer compte", use_container_width=True):
@@ -96,11 +97,13 @@ if not st.session_state.logged:
 
             else:
                 users[username] = password
+
                 with open("users.json", "w") as f:
                     json.dump(users, f)
 
                 st.success("Compte créé")
 
+    # CONNEXION
     else:
 
         if st.button("Connexion", use_container_width=True):
@@ -113,17 +116,16 @@ if not st.session_state.logged:
                 st.error("Identifiants incorrects")
 
 # ======================
-# HOME
+# APP PRINCIPALE
 # ======================
 else:
 
     st.success(f"Bienvenue {st.session_state.username}")
 
-    # MODE CHAT
+    # MENU
     if st.button("💬 IA TEXTE", use_container_width=True):
         st.session_state.mode = "chat"
 
-    # MODE VOCAL (future)
     if st.button("🎤 IA VOCALE", use_container_width=True):
         st.info("Bientôt disponible 🔥")
 
@@ -132,7 +134,7 @@ else:
     # ======================
     if st.session_state.mode == "chat":
 
-        st.subheader("💬 Discussion avec Nova")
+        st.subheader("💬 Nova IA")
 
         user_input = st.text_input("Parle à Nova")
 
@@ -148,7 +150,7 @@ else:
                 messages=[
                     {
                         "role": "system",
-                        "content": "Tu es Nova, une IA féminine douce, utile et naturelle."
+                        "content": "Tu es Nova, une IA féminine douce, naturelle et utile."
                     },
                     *st.session_state.messages
                 ]
@@ -161,7 +163,7 @@ else:
                 "content": reply
             })
 
-        # AFFICHAGE HISTORIQUE
+        # AFFICHAGE
         for msg in st.session_state.messages:
             if msg["role"] == "user":
                 st.markdown(f"🧑‍💬 **Toi :** {msg['content']}")
