@@ -1,18 +1,18 @@
 import streamlit as st
+from mistralai import Mistral
 import json
 import os
-from mistralai import Mistral
 
 # ======================
 # CONFIG
 # ======================
 st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
 
-# 🔑 TA CLE API ICI
-client = Mistral(api_key="TA_CLE_API_ICI")
+# 🔐 API KEY (Streamlit Secrets)
+client = Mistral(api_key=st.secrets["MISTRAL_API_KEY"])
 
 # ======================
-# USERS
+# USERS FILE
 # ======================
 if not os.path.exists("users.json"):
     with open("users.json", "w") as f:
@@ -31,13 +31,14 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# STYLE SIMPLE
+# STYLE
 # ======================
 st.markdown("""
 <style>
 .stApp {
     background-color: #0d0d0d;
     color: white;
+    font-family: Arial;
 }
 
 h1 {
@@ -74,7 +75,6 @@ if not st.session_state.logged:
     username = st.text_input("Nom utilisateur")
     password = st.text_input("Mot de passe", type="password")
 
-    # INSCRIPTION
     if mode == "Inscription":
 
         if st.button("Créer compte"):
@@ -87,12 +87,12 @@ if not st.session_state.logged:
 
             else:
                 users[username] = password
+
                 with open("users.json", "w") as f:
                     json.dump(users, f)
 
                 st.success("Compte créé ✔️")
 
-    # CONNEXION
     else:
 
         if st.button("Connexion"):
@@ -128,10 +128,7 @@ else:
             response = client.chat.complete(
                 model="mistral-small-latest",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": "Tu es Nova, une IA féminine douce et utile."
-                    },
+                    {"role": "system", "content": "Tu es Nova, une IA féminine douce et utile."},
                     *st.session_state.messages
                 ]
             )
