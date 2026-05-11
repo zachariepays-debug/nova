@@ -5,37 +5,94 @@ import os
 st.set_page_config(
     page_title="Nova",
     page_icon="💜",
-    layout="wide"
+    layout="centered"
 )
 
-# Création fichier users
+# ======================
+# USERS
+# ======================
+
 if not os.path.exists("users.json"):
     with open("users.json", "w") as f:
         json.dump({}, f)
 
-# Charger users
 with open("users.json", "r") as f:
     users = json.load(f)
 
-# Session
+# ======================
+# SESSION
+# ======================
+
 if "logged" not in st.session_state:
     st.session_state.logged = False
 
+# ======================
 # STYLE
+# ======================
+
 st.markdown("""
 <style>
-.stButton button {
-    height: 60px;
-    font-size: 25px;
-    border-radius: 20px;
+
+html, body, [class*="css"] {
+    font-family: sans-serif;
 }
+
+.stApp {
+    background-color: #0d0d0d;
+    color: white;
+}
+
+h1 {
+    text-align: center;
+    font-size: 55px !important;
+    color: #c77dff;
+}
+
+.big-button button {
+    height: 180px;
+    font-size: 35px !important;
+    border-radius: 30px;
+    margin-top: 20px;
+    background: linear-gradient(45deg,#7b2cbf,#c77dff);
+    color: white;
+    border: none;
+}
+
+.stTextInput input {
+    height: 55px;
+    font-size: 20px;
+    border-radius: 15px;
+}
+
+.stSelectbox div {
+    font-size: 20px;
+}
+
+.small-text {
+    text-align:center;
+    color:gray;
+    font-size:18px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💜 NOVA")
+# ======================
+# LOGO
+# ======================
 
-# PAS CONNECTÉ
+st.markdown("# 💜 NOVA")
+
+# ======================
+# LOGIN / REGISTER
+# ======================
+
 if not st.session_state.logged:
+
+    st.markdown(
+        "<p class='small-text'>Assistant IA vocal intelligent</p>",
+        unsafe_allow_html=True
+    )
 
     menu = st.selectbox(
         "Choisir",
@@ -43,28 +100,42 @@ if not st.session_state.logged:
     )
 
     username = st.text_input("Nom utilisateur")
-    password = st.text_input("Mot de passe", type="password")
 
-    # INSCRIPTION
+    password = st.text_input(
+        "Mot de passe",
+        type="password"
+    )
+
+    # ======================
+    # REGISTER
+    # ======================
+
     if menu == "Inscription":
 
-        if st.button("Créer compte"):
+        if st.button("Créer mon compte", use_container_width=True):
 
             if username in users:
                 st.error("Nom déjà utilisé")
 
+            elif username == "" or password == "":
+                st.error("Remplis tous les champs")
+
             else:
+
                 users[username] = password
 
                 with open("users.json", "w") as f:
                     json.dump(users, f)
 
-                st.success("Compte créé")
+                st.success("Compte créé avec succès")
 
-    # CONNEXION
+    # ======================
+    # LOGIN
+    # ======================
+
     else:
 
-        if st.button("Connexion"):
+        if st.button("Connexion", use_container_width=True):
 
             if username in users and users[username] == password:
 
@@ -75,19 +146,54 @@ if not st.session_state.logged:
             else:
                 st.error("Identifiants incorrects")
 
-# CONNECTÉ
+# ======================
+# HOME
+# ======================
+
 else:
 
-    st.success(f"Bienvenue {st.session_state.username}")
+    st.success(
+        f"Bienvenue {st.session_state.username}"
+    )
 
-    col1, col2 = st.columns(2)
+    st.markdown("## Choisissez un mode")
 
-    with col1:
-        st.button("💬 IA TEXTE", use_container_width=True)
+    st.markdown(
+        '<div class="big-button">',
+        unsafe_allow_html=True
+    )
 
-    with col2:
-        st.button("🎤 IA VOCALE", use_container_width=True)
+    st.button(
+        "💬 IA TEXTE",
+        use_container_width=True
+    )
 
-    if st.button("Déconnexion"):
+    st.markdown(
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        '<div class="big-button">',
+        unsafe_allow_html=True
+    )
+
+    st.button(
+        "🎤 IA VOCALE",
+        use_container_width=True
+    )
+
+    st.markdown(
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    st.divider()
+
+    if st.button(
+        "Déconnexion",
+        use_container_width=True
+    ):
+
         st.session_state.logged = False
         st.rerun()
