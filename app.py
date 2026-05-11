@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import os
-from mistralai import Mistral
+from mistralai.client import Mistral
 
 # ======================
 # CONFIG
@@ -12,7 +12,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# ⚠️ MET TA CLE MISTRAL ICI
+# ⚠️ TA CLE API MISTRAL ICI
 client = Mistral(api_key="TA_CLE_API_ICI")
 
 # ======================
@@ -163,7 +163,7 @@ else:
                 "content": reply
             })
 
-        # AFFICHAGE
+        # AFFICHAGE CHAT
         for msg in st.session_state.messages:
             if msg["role"] == "user":
                 st.markdown(f"🧑‍💬 **Toi :** {msg['content']}")
