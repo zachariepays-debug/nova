@@ -12,7 +12,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# ⚠️ TA CLE API MISTRAL ICI
+# ⚠️ TA CLE API MISTRAL
 client = Mistral(api_key="TA_CLE_API_ICI")
 
 # ======================
@@ -26,7 +26,7 @@ with open("users.json", "r") as f:
     users = json.load(f)
 
 # ======================
-# SESSION STATE
+# SESSION
 # ======================
 if "logged" not in st.session_state:
     st.session_state.logged = False
@@ -38,34 +38,72 @@ if "mode" not in st.session_state:
     st.session_state.mode = None
 
 # ======================
-# STYLE MOBILE
+# STYLE BULLES
 # ======================
 st.markdown("""
 <style>
+
 .stApp {
     background-color: #0d0d0d;
     color: white;
+    font-family: Arial;
 }
 
+/* TITRE */
 h1 {
     text-align: center;
-    font-size: 50px !important;
+    font-size: 48px !important;
     color: #c77dff;
 }
 
-.stButton button {
-    height: 140px;
-    font-size: 28px !important;
-    border-radius: 25px;
-    background: linear-gradient(45deg,#7b2cbf,#c77dff);
+/* BOUTONS STYLE BULLE */
+.stButton > button {
+    background: linear-gradient(135deg, #7b2cbf, #c77dff);
     color: white;
     border: none;
+    border-radius: 50px;
+    padding: 16px 20px;
+    font-size: 20px !important;
+    width: 100%;
+    margin-top: 10px;
+    box-shadow: 0px 5px 20px rgba(199,125,255,0.3);
+    transition: 0.2s ease;
 }
 
+.stButton > button:hover {
+    transform: scale(1.02);
+    box-shadow: 0px 8px 25px rgba(199,125,255,0.5);
+}
+
+/* INPUT */
 input {
     height: 50px !important;
     font-size: 18px !important;
+    border-radius: 15px;
 }
+
+/* BULLES CHAT */
+.user-bubble {
+    background: #7b2cbf;
+    color: white;
+    padding: 12px 15px;
+    border-radius: 20px;
+    margin: 8px 0;
+    text-align: right;
+    max-width: 80%;
+    margin-left: auto;
+}
+
+.ai-bubble {
+    background: #222;
+    color: white;
+    padding: 12px 15px;
+    border-radius: 20px;
+    margin: 8px 0;
+    text-align: left;
+    max-width: 80%;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -134,9 +172,9 @@ else:
     # ======================
     if st.session_state.mode == "chat":
 
-        st.subheader("💬 Nova IA")
+        st.subheader("💬 Discussion avec Nova")
 
-        user_input = st.text_input("Parle à Nova")
+        user_input = st.text_input("Écris à Nova")
 
         if st.button("Envoyer") and user_input:
 
@@ -163,12 +201,20 @@ else:
                 "content": reply
             })
 
-        # AFFICHAGE CHAT
+        # ======================
+        # AFFICHAGE BULLES
+        # ======================
         for msg in st.session_state.messages:
             if msg["role"] == "user":
-                st.markdown(f"🧑‍💬 **Toi :** {msg['content']}")
+                st.markdown(
+                    f"<div class='user-bubble'>🧑 {msg['content']}</div>",
+                    unsafe_allow_html=True
+                )
             else:
-                st.markdown(f"💜 **Nova :** {msg['content']}")
+                st.markdown(
+                    f"<div class='ai-bubble'>💜 Nova : {msg['content']}</div>",
+                    unsafe_allow_html=True
+                )
 
     # ======================
     # LOGOUT
