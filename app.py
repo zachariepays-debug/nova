@@ -3,197 +3,131 @@ import json
 import requests
 import base64
 
-# ======================
-# CONFIG
-# ======================
-st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
+# ==========================
+# CONFIGURATION
+# ==========================
+st.set_page_config(page_title="Nova", layout="centered")
 
-MISTRAL_API_KEY = st.secrets["MISTRAL_API_KEY"]
-
-GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
-GITHUB_REPO = st.secrets.get("GITHUB_REPO", "")
-
+# Récupération des secrets (à configurer dans Streamlit Cloud)
+API_KEY = st.secrets["MISTRAL_API_KEY"]
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+GITHUB_REPO = st.secrets["GITHUB_REPO"]
 ADMIN_PASSWORD = "babar"
 
-# ======================
-# USERS STORAGE LOCAL + GITHUB
-# ======================
+# ==========================
+# GESTION DE LA SESSION
+# ==========================
+if "logged" not in st.session_state:
+    st.session_state.logged = False
+if "user" not in st.session_state:
+    st.session_state.user = ""
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 if "users" not in st.session_state:
     st.session_state.users = {}
 
-# ======================
-# SESSION
-# ======================
-if "logged" not in st.session_state:
-    st.session_state.logged = False
-
-if "user" not in st.session_state:
-    st.session_state.user = ""
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# ======================
-# STYLE CHAT
-# ======================
-st.markdown("""
-<style>
-.stApp { background:#0d0d0d; color:white; }
-
-.user {
-    background:#7b2cbf;
-    padding:10px;
-    border-radius:15px;
-    margin:5px;
-    max-width:80%;
-}
-
-.bot {
-    background:#1f1f1f;
-    padding:10px;
-    border-radius:15px;
-    margin:5px;
-    max-width:80%;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.title("💜 Nova")
-
-# ======================
-# MISTRAL API (SAFE)
-# ======================
-def ask_mistral(messages):
-
+# ==========================
+# FONCTIONS IA (MISTRAL API)
+# ==========================
+def ask_ai(messages):
     url = "https://api.mistral.ai/v1/chat/completions"
-
     headers = {
-        "Authorization": f"Bearer {MISTRAL_API_KEY}",
+        "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
-
     payload = {
         "model": "mistral-small-latest",
         "messages": messages
     }
+    try:
+        r = requests.post(url, headers=headers, json=payload)
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"Erreur API : {e}"
 
-    r = requests.post(url, headers=headers, json=payload)
-
-    return r.json()["choices"][0]["message"]["content"]
-
-# ======================
-# GITHUB SAVE AUTO
-# ======================
+# ==========================
+# SAUVEGARDE GITHUB
+# ==========================
 def save_github():
-
-    if not GITHUB_TOKEN or not GITHUB_REPO:
-        return
-
     path = f"chats/{st.session_state.user}.json"
     url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
-
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github+json"
     }
-
+    
+    # Préparation du contenu
     content = json.dumps(st.session_state.messages, ensure_ascii=False, indent=2)
     encoded = base64.b64encode(content.encode()).decode()
-
+    
+    # Vérifier si le fichier existe déjà pour récupérer son SHA
     r = requests.get(url, headers=headers)
     sha = r.json().get("sha") if r.status_code == 200 else None
-
-    payload = {
-        "message": f"auto save {st.session_state.user}",
+    
+    data = {
+        "message": f"Backup chat for {st.session_state.user}",
         "content": encoded
     }
-
     if sha:
-        payload["sha"] = sha
+        data["sha"] = sha
+        
+    requests.put(url, headers=headers, json=data)
 
-    requests.put(url, headers=headers, json=payload)
-
-# ======================
-# LOGIN / REGISTER / ADMIN
-# ======================
+# ==========================
+# INTERFACE UTILISATEUR
+# ==========================
 if not st.session_state.logged:
-
-    tab1, tab2, tab3 = st.tabs(["Connexion", "Inscription", "Admin"])
-
-    # LOGIN
+    st.title("Nova IA - Connexion")
+    tab1, tab2 = st.tabs(["Connexion", "Inscription"])
+    
     with tab1:
-        u = st.text_input("User")
-        p = st.text_input("Password", type="password")
-
-        if st.button("Login"):
-            if u in st.session_state.users and st.session_state.users[u] == p:
-                st.session_state.logged = True
-                st.session_state.user = u
-                st.rerun()
-
-    # REGISTER
-    with tab2:
-        u2 = st.text_input("New user")
-        p2 = st.text_input("New pass", type="password")
-
-        if st.button("Create"):
-            st.session_state.users[u2] = p2
-            st.success("Compte créé")
-
-    # ADMIN
-    with tab3:
-        admin = st.text_input("Admin password", type="password")
-
-        if st.button("Enter admin"):
-            if admin == ADMIN_PASSWORD:
+        u = st.text_input("Nom d'utilisateur", key="login_user")
+        p = st.text_input("Mot de passe", type="password", key="login_pass")
+        if st.button("Se connecter"):
+            if u == "admin" and p == ADMIN_PASSWORD:
                 st.session_state.logged = True
                 st.session_state.user = "admin"
                 st.rerun()
+            elif u in st.session_state.users and st.session_state.users[u] == p:
+                st.session_state.logged = True
+                st.session_state.user = u
+                st.rerun()
             else:
-                st.error("Wrong password")
+                st.error("Identifiants incorrects")
+                
+    with tab2:
+        new_u = st.text_input("Choisir un pseudo", key="reg_user")
+        new_p = st.text_input("Choisir un mot de passe", type="password", key="reg_pass")
+        if st.button("Créer un compte"):
+            if new_u and new_p:
+                st.session_state.users[new_u] = new_p
+                st.success("Compte créé ! Connectez-vous.")
+            else:
+                st.warning("Remplissez tous les champs.")
 
-# ======================
-# APP PRINCIPALE
-# ======================
 else:
-
-    st.success(f"Connecté : {st.session_state.user}")
-
-    # 👑 ADMIN PANEL
-    if st.session_state.user == "admin":
-        st.warning("👑 ADMIN MODE")
-        st.write("Users:", st.session_state.users)
-
-    # CHAT DISPLAY
-    for m in st.session_state.messages:
-        if m["role"] == "user":
-            st.markdown(f"<div class='user'>🧑 {m['content']}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div class='bot'>💜 Nova: {m['content']}</div>", unsafe_allow_html=True)
-
-    prompt = st.text_input("Message")
-
-    if st.button("Envoyer") and prompt:
-
-        st.session_state.messages.append({"role": "user", "content": prompt})
-
-        try:
-            reply = ask_mistral(st.session_state.messages)
-
-        except Exception as e:
-            reply = f"Erreur IA: {e}"
-
-        st.session_state.messages.append({"role": "assistant", "content": reply})
-
-        # 💾 SAVE AUTO GITHUB
-        try:
-            save_github()
-        except:
-            pass
-
-        st.rerun()
-
+    # Interface Chat une fois connecté
+    st.title(f"Nova IA - Session de {st.session_state.user}")
+    
     if st.button("Déconnexion"):
         st.session_state.logged = False
-        st.session_state.messages = []
         st.rerun()
+
+    # Affichage de l'historique
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+    # Entrée du chat
+    if prompt := st.chat_input("Posez votre question à Nova..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
+
+        with st.chat_message("assistant"):
+            response = ask_ai(st.session_state.messages)
+            st.write(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        
+        # Sauvegarde automatique
+        save_github()
