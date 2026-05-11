@@ -8,11 +8,10 @@ from mistralai.client import Mistral
 # ======================
 st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
 
-# 🔐 API KEY (Streamlit Secrets)
 client = Mistral(api_key=st.secrets["MISTRAL_API_KEY"])
 
 # ======================
-# USERS FILE
+# USERS
 # ======================
 if not os.path.exists("users.json"):
     with open("users.json", "w") as f:
@@ -22,7 +21,7 @@ with open("users.json", "r") as f:
     users = json.load(f)
 
 # ======================
-# SESSION STATE
+# SESSION
 # ======================
 if "logged" not in st.session_state:
     st.session_state.logged = False
@@ -34,30 +33,50 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# STYLE SIMPLE
+# STYLE FIX CHAT
 # ======================
 st.markdown("""
 <style>
+
 .stApp {
     background-color: #0d0d0d;
     color: white;
 }
 
-.user {
-    background: #7b2cbf;
-    padding: 10px;
-    border-radius: 15px;
-    margin: 5px 0;
-    text-align: left;
+/* zone chat */
+.chat {
+    max-width: 800px;
+    margin: auto;
+    padding-bottom: 120px;
 }
 
+/* USER */
+.user {
+    background: #7b2cbf;
+    padding: 12px;
+    border-radius: 18px;
+    margin: 8px 0;
+    text-align: left;
+    width: fit-content;
+    max-width: 80%;
+}
+
+/* BOT */
 .bot {
     background: #1f1f1f;
-    padding: 10px;
-    border-radius: 15px;
-    margin: 5px 0;
+    padding: 12px;
+    border-radius: 18px;
+    margin: 8px 0;
     text-align: left;
+    width: fit-content;
+    max-width: 80%;
 }
+
+h1 {
+    text-align: center;
+    color: #c77dff;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -97,19 +116,26 @@ if not st.session_state.logged:
                 st.error("Erreur connexion")
 
 # ======================
-# CHAT IA
+# CHAT
 # ======================
 else:
 
     st.success(f"Bienvenue {st.session_state.user}")
 
     # CHAT DISPLAY
+    st.markdown("<div class='chat'>", unsafe_allow_html=True)
+
     for msg in st.session_state.messages:
+
         if msg["role"] == "user":
             st.markdown(f"<div class='user'>🧑 {msg['content']}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div class='bot'>💜 Nova: {msg['content']}</div>", unsafe_allow_html=True)
 
+        else:
+            st.markdown(f"<div class='bot'>💜 Nova : {msg['content']}</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # INPUT
     prompt = st.text_input("Écris à Nova")
 
     if st.button("Envoyer") and prompt:
@@ -128,12 +154,13 @@ else:
             reply = response.choices[0].message.content
 
         except Exception as e:
-            reply = f"⚠️ Erreur IA: {e}"
+            reply = f"⚠️ Erreur IA : {e}"
 
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
         st.rerun()
 
+    # LOGOUT
     if st.button("Déconnexion"):
         st.session_state.logged = False
         st.session_state.messages = []
