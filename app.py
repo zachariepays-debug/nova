@@ -6,7 +6,7 @@ from mistralai.client import Mistral
 # ======================
 # CONFIG
 # ======================
-st.set_page_config(page_title="Nova", page_icon="💜", layout="wide")
+st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
 
 client = Mistral(api_key="TA_CLE_API_ICI")
 
@@ -30,55 +30,41 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# STYLE CHATGPT
+# STYLE SIMPLE (SAFE)
 # ======================
 st.markdown("""
 <style>
-
 .stApp {
     background-color: #0d0d0d;
     color: white;
 }
 
-.chat {
-    max-width: 800px;
-    margin: auto;
-    padding-bottom: 120px;
+h1 {
+    text-align: center;
+    color: #c77dff;
 }
 
 .user {
     background: #7b2cbf;
-    padding: 12px;
-    border-radius: 18px;
-    margin: 8px 0;
+    padding: 10px;
+    border-radius: 15px;
+    margin: 5px 0;
     text-align: right;
 }
 
 .bot {
     background: #1f1f1f;
-    padding: 12px;
-    border-radius: 18px;
-    margin: 8px 0;
-}
-
-input {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60%;
-    height: 50px;
-    border-radius: 25px;
     padding: 10px;
+    border-radius: 15px;
+    margin: 5px 0;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💜 Nova Chat")
+st.title("💜 Nova")
 
 # ======================
-# LOGIN / INSCRIPTION
+# LOGIN
 # ======================
 if not st.session_state.logged:
 
@@ -87,7 +73,6 @@ if not st.session_state.logged:
     username = st.text_input("Nom utilisateur")
     password = st.text_input("Mot de passe", type="password")
 
-    # INSCRIPTION
     if mode == "Inscription":
 
         if st.button("Créer compte"):
@@ -95,18 +80,13 @@ if not st.session_state.logged:
             if username in users:
                 st.error("Nom déjà utilisé")
 
-            elif username == "" or password == "":
-                st.error("Remplis tous les champs")
-
             else:
                 users[username] = password
-
                 with open("users.json", "w") as f:
                     json.dump(users, f)
 
                 st.success("Compte créé ✔️")
 
-    # CONNEXION
     else:
 
         if st.button("Connexion"):
@@ -125,17 +105,15 @@ else:
 
     st.success(f"Bienvenue {st.session_state.username}")
 
-    st.markdown("<div class='chat'>", unsafe_allow_html=True)
-
+    # AFFICHAGE CHAT
     for msg in st.session_state.messages:
         if msg["role"] == "user":
             st.markdown(f"<div class='user'>🧑 {msg['content']}</div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<div class='bot'>💜 Nova : {msg['content']}</div>", unsafe_allow_html=True)
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    prompt = st.text_input("Message", label_visibility="collapsed")
+    # INPUT NORMAL STREAMLIT (IMPORTANT)
+    prompt = st.text_input("Écris à Nova")
 
     if st.button("Envoyer") and prompt:
 
@@ -145,7 +123,7 @@ else:
             response = client.chat.complete(
                 model="mistral-small-latest",
                 messages=[
-                    {"role": "system", "content": "Tu es Nova, une IA féminine douce et utile."},
+                    {"role": "system", "content": "Tu es Nova, une IA féminine douce."},
                     *st.session_state.messages
                 ]
             )
