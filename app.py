@@ -6,17 +6,14 @@ from mistralai.client import Mistral
 # ======================
 # CONFIG
 # ======================
-st.set_page_config(
-    page_title="Nova",
-    page_icon="💜",
-    layout="centered"
-)
+st.set_page_config(page_title="Nova", page_icon="💜", layout="centered")
 
-# ⚠️ TA CLE API ICI
-client = Mistral(api_key="TA_CLE_API_ICI")
+# ⚠️ CLÉ API (UTILISE st.secrets EN PRODUCTION)
+API_KEY = st.secrets.get("MISTRAL_API_KEY", "PUT_YOUR_KEY_HERE")
+client = Mistral(api_key=API_KEY)
 
 # ======================
-# USERS SYSTEM
+# USERS
 # ======================
 if not os.path.exists("users.json"):
     with open("users.json", "w") as f:
@@ -35,13 +32,14 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # ======================
-# STYLE SIMPLE
+# STYLE
 # ======================
 st.markdown("""
 <style>
 .stApp {
     background-color: #0d0d0d;
     color: white;
+    font-family: Arial;
 }
 
 h1 {
@@ -54,7 +52,7 @@ h1 {
 st.title("💜 NOVA")
 
 # ======================
-# LOGIN / REGISTER
+# LOGIN
 # ======================
 if not st.session_state.logged:
 
@@ -93,7 +91,7 @@ if not st.session_state.logged:
                 st.error("Erreur connexion")
 
 # ======================
-# APP PRINCIPALE
+# APP IA
 # ======================
 else:
 
@@ -103,28 +101,26 @@ else:
 
     if st.button("Envoyer") and user_input:
 
-        st.session_state.messages.append({
-            "role": "user",
-            "content": user_input
-        })
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
-        response = client.chat.complete(
-            model="mistral-large-latest",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Tu es Nova, une IA féminine douce, naturelle et utile."
-                },
-                *st.session_state.messages
-            ]
-        )
+        try:
+            response = client.chat.complete(
+                model="mistral-small-latest",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Tu es Nova, une IA féminine douce, naturelle et utile."
+                    },
+                    *st.session_state.messages
+                ]
+            )
 
-        reply = response.choices[0].message.content
+            reply = response.choices[0].message.content
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": reply
-        })
+        except Exception as e:
+            reply = "⚠️ Erreur IA (clé API ou modèle invalide)"
+
+        st.session_state.messages.append({"role": "assistant", "content": reply})
 
     # CHAT
     for msg in st.session_state.messages:
